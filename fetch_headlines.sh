@@ -94,24 +94,32 @@ CURRENT="$CACHE_DIR/current.tsv"
 NEXT="$CACHE_DIR/next.tsv"
 QUEUE="$CACHE_DIR/queue.tsv"
 
+# Atomic write helper — write to tmp then mv into place
+atomic_write() {
+    local target="$1"
+    local tmp="${target}.tmp.$$"
+    cat > "$tmp"
+    mv "$tmp" "$target"
+}
+
 # Promote: what was queued up becomes the displayed headline
 [ -f "$NEXT" ] && mv "$NEXT" "$CURRENT"
 
 # Build/refill the queue if empty or missing
 if [ ! -s "$QUEUE" ] && [ -s "$HEADLINES_FILE" ]; then
-    # Deduplicate by title (field 2), shuffle so we cycle through all before repeating
-    sort -t$'\t' -k2,2 -u "$HEADLINES_FILE" | sort -R > "$QUEUE" 2>/dev/null \
-        || sort -t$'\t' -k2,2 -u "$HEADLINES_FILE" > "$QUEUE"
+    sort -t$'\t' -k2,2 -u "$HEADLINES_FILE" | sort -R 2>/dev/null \
+        | atomic_write "$QUEUE" \
+        || sort -t$'\t' -k2,2 -u "$HEADLINES_FILE" | atomic_write "$QUEUE"
 fi
 
-# Pop the top line from the queue into next
+# Pop the top line from the queue into next (atomic)
 if [ -s "$QUEUE" ]; then
-    head -1 "$QUEUE" > "$NEXT"
+    head -1 "$QUEUE" | atomic_write "$NEXT"
     sed -i '' '1d' "$QUEUE"
 fi
 
 # If no current yet (first run), pop one immediately
 if [ ! -s "$CURRENT" ] && [ -s "$QUEUE" ]; then
-    head -1 "$QUEUE" > "$CURRENT"
+    head -1 "$QUEUE" | atomic_write "$CURRENT"
     sed -i '' '1d' "$QUEUE"
 fi
