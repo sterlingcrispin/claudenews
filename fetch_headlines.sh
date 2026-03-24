@@ -2,6 +2,7 @@
 # fetch_headlines.sh — Fetches news headlines from a random source and caches them.
 # Designed to run as a Claude Code UserPromptSubmit hook.
 
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 CACHE_DIR="$HOME/.claude/news_cache"
 HEADLINES_FILE="$CACHE_DIR/headlines.tsv"
 LOCK_FILE="$CACHE_DIR/fetch.lock"
@@ -11,7 +12,6 @@ mkdir -p "$CACHE_DIR"
 
 # Skip if another fetch is already running
 if [ -f "$LOCK_FILE" ]; then
-    # Remove stale locks older than 30 seconds
     find "$CACHE_DIR" -name "fetch.lock" -mmin +0.5 -delete 2>/dev/null
     [ -f "$LOCK_FILE" ] && exit 0
 fi
@@ -35,72 +35,11 @@ FEEDS=(
     "Ars Technica|https://feeds.arstechnica.com/arstechnica/index"
 )
 
-parse_rss() {
-    local name="$1"
-    python3 -c "
-import sys, xml.etree.ElementTree as ET, re, html
-
-def clean(text):
-    if not text:
-        return ''
-    text = re.sub(r'<!\[CDATA\[|\]\]>', '', text)
-    text = re.sub(r'<[^>]+>', '', text)
-    text = html.unescape(text)
-    text = ' '.join(text.split())
-    return text.strip()
-
-def first_sentence(text):
-    if not text:
-        return ''
-    # Split on sentence-ending punctuation followed by space or end
-    m = re.match(r'(.*?[.!?])(?:\s|$)', text)
-    if m:
-        s = m.group(1)
-        if len(s) > 200:
-            return s[:197] + '...'
-        return s
-    if len(text) > 200:
-        return text[:197] + '...'
-    return text
-
-name = '$name'
-xml_data = sys.stdin.read()
-try:
-    root = ET.fromstring(xml_data)
-except ET.ParseError:
-    sys.exit(1)
-
-# Handle both RSS and Atom namespaces
-ns = {'atom': 'http://www.w3.org/2005/Atom'}
-items = root.findall('.//item')
-if not items:
-    items = root.findall('.//atom:entry', ns)
-
-for item in items:
-    title_el = item.find('title') or item.find('atom:title', ns)
-    desc_el = item.find('description') or item.find('atom:summary', ns)
-    link_el = item.find('link') or item.find('atom:link', ns)
-
-    title = clean(title_el.text if title_el is not None and title_el.text else '')
-    desc = first_sentence(clean(desc_el.text if desc_el is not None and desc_el.text else ''))
-    link = ''
-    if link_el is not None:
-        link = link_el.text or link_el.get('href', '')
-        link = link.strip()
-
-    if title:
-        # TSV: source, title, description, link
-        print(f'{name}\t{title}\t{desc}\t{link}')
-"
-}
-
 fetch_rss() {
     local name="$1"
     local url="$2"
-    local xml
-    xml=$(curl -s --max-time "$FETCH_TIMEOUT" -A "ClaudeNewsBot/1.0" "$url" 2>/dev/null)
-    [ -z "$xml" ] && return 1
-    echo "$xml" | parse_rss "$name"
+    curl -s --max-time "$FETCH_TIMEOUT" -A "ClaudeNewsBot/1.0" "$url" 2>/dev/null \
+        | python3 "$SCRIPT_DIR/parse_rss.py" "$name"
 }
 
 fetch_hackernews() {
@@ -114,10 +53,15 @@ fetch_hackernews() {
     for id in $id_list; do
         local item
         item=$(curl -s --max-time 5 "https://hacker-news.firebaseio.com/v0/item/${id}.json" 2>/dev/null)
-        local title url
-        title=$(echo "$item" | python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('title',''))" 2>/dev/null)
-        url=$(echo "$item" | python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('url', 'https://news.ycombinator.com/item?id=$id'))" 2>/dev/null)
-        [ -n "$title" ] && printf 'Hacker News\t%s\t\t%s\n' "$title" "$url"
+        [ -z "$item" ] && continue
+        echo "$item" | python3 -c "
+import sys, json
+d = json.load(sys.stdin)
+title = d.get('title', '')
+url = d.get('url', 'https://news.ycombinator.com/item?id=${id}')
+if title:
+    print(f'Hacker News\t{title}\t\t{url}')
+" 2>/dev/null
     done
 }
 
