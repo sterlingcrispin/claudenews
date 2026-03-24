@@ -1,7 +1,7 @@
 #!/bin/bash
 # news_statusline.sh — Outputs a random headline for the Claude Code status line.
 
-HEADLINES_FILE="$HOME/.claude/news_cache/headlines.txt"
+HEADLINES_FILE="$HOME/.claude/news_cache/headlines.tsv"
 
 if [ ! -f "$HEADLINES_FILE" ] || [ ! -s "$HEADLINES_FILE" ]; then
     echo "No headlines cached yet"
@@ -11,11 +11,29 @@ fi
 # Count lines and pick a random one
 TOTAL=$(wc -l < "$HEADLINES_FILE" | tr -d ' ')
 LINE=$((RANDOM % TOTAL + 1))
-HEADLINE=$(sed -n "${LINE}p" "$HEADLINES_FILE")
+ENTRY=$(sed -n "${LINE}p" "$HEADLINES_FILE")
 
-# Truncate to 120 chars for status line readability
-if [ ${#HEADLINE} -gt 120 ]; then
-    HEADLINE="${HEADLINE:0:117}..."
+# Parse TSV: source \t title \t description \t link
+SOURCE=$(echo "$ENTRY" | cut -f1)
+TITLE=$(echo "$ENTRY" | cut -f2)
+DESC=$(echo "$ENTRY" | cut -f3)
+LINK=$(echo "$ENTRY" | cut -f4)
+
+# Truncate title to 100 chars
+if [ ${#TITLE} -gt 100 ]; then
+    TITLE="${TITLE:0:97}..."
 fi
 
-echo "$HEADLINE"
+# Build output
+OUTPUT="$SOURCE: $TITLE"
+if [ -n "$DESC" ]; then
+    OUTPUT="$OUTPUT"$'\n'"  $DESC"
+fi
+if [ -n "$LINK" ]; then
+    OUTPUT="$OUTPUT [$LINK]"
+elif [ -n "$DESC" ]; then
+    # close the line even without a link
+    true
+fi
+
+echo "$OUTPUT"
