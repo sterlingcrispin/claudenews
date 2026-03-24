@@ -22,18 +22,39 @@ LINK=$(echo "$ENTRY" | cut -f4)
 # Get terminal width, default 80
 COLS=$(tput cols 2>/dev/null || echo 80)
 
-# Line 1: Source: Title
-L1="$SOURCE: $TITLE"
-if [ ${#L1} -gt "$COLS" ]; then
-    L1="${L1:0:$((COLS - 3))}..."
-fi
-echo "$L1"
+# Word-wrap text to COLS width. Prefix is prepended to continuation lines.
+wrap() {
+    local text="$1"
+    local prefix="$2"
+    local width="$COLS"
+    local line=""
+    local first=true
 
-# Line 2: Description (no URL — not clickable in status bar)
+    for word in $text; do
+        if [ -z "$line" ]; then
+            line="$word"
+        elif [ $(( ${#line} + 1 + ${#word} )) -le "$width" ]; then
+            line="$line $word"
+        else
+            echo "$line"
+            line="${prefix}${word}"
+            width="$COLS"
+            first=false
+        fi
+    done
+    [ -n "$line" ] && echo "$line"
+}
+
+# Title with source prefix, wrapped
+wrap "$SOURCE: $TITLE" "  "
+
+# Description, wrapped with indent
 if [ -n "$DESC" ]; then
-    L2="  $DESC"
-    if [ ${#L2} -gt "$COLS" ]; then
-        L2="${L2:0:$((COLS - 3))}..."
-    fi
-    echo "$L2"
+    wrap "  $DESC" "  "
+fi
+
+# URL (strip tracking params)
+if [ -n "$LINK" ]; then
+    LINK="${LINK%%\?*}"
+    echo "  $LINK"
 fi
