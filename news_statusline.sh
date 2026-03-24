@@ -19,21 +19,13 @@ TITLE=$(echo "$ENTRY" | cut -f2)
 DESC=$(echo "$ENTRY" | cut -f3)
 LINK=$(echo "$ENTRY" | cut -f4)
 
-# Truncate title to 100 chars
-if [ ${#TITLE} -gt 100 ]; then
-    TITLE="${TITLE:0:97}..."
-fi
-
-# Build output
+# Build single-line output: Source: Title — Description... [link]
 OUTPUT="$SOURCE: $TITLE"
 if [ -n "$DESC" ]; then
-    OUTPUT="$OUTPUT"$'\n'"  $DESC"
+    OUTPUT="$OUTPUT — $DESC"
 fi
 if [ -n "$LINK" ]; then
     OUTPUT="$OUTPUT [$LINK]"
-elif [ -n "$DESC" ]; then
-    # close the line even without a link
-    true
 fi
 
 echo "$OUTPUT"
