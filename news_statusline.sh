@@ -19,13 +19,12 @@ TITLE=$(echo "$ENTRY" | cut -f2)
 DESC=$(echo "$ENTRY" | cut -f3)
 LINK=$(echo "$ENTRY" | cut -f4)
 
-# Build single-line output: Source: Title — Description... [link]
-OUTPUT="$SOURCE: $TITLE"
-if [ -n "$DESC" ]; then
-    OUTPUT="$OUTPUT — $DESC"
+# Line 1: Source: Title
+# Line 2: Description... [link]
+echo "$SOURCE: $TITLE"
+if [ -n "$DESC" ] || [ -n "$LINK" ]; then
+    LINE2=""
+    [ -n "$DESC" ] && LINE2="$DESC"
+    [ -n "$LINK" ] && LINE2="$LINE2 [$LINK]"
+    echo "  $LINE2"
 fi
-if [ -n "$LINK" ]; then
-    OUTPUT="$OUTPUT [$LINK]"
-fi
-
-echo "$OUTPUT"
