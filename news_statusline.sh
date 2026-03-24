@@ -45,15 +45,12 @@ wrap() {
     [ -n "$line" ] && echo "$line"
 }
 
-# Title with source prefix, wrapped
-wrap "$SOURCE: $TITLE" "  "
+# Combine title + description into one flowing block
+BODY="$SOURCE: $TITLE"
+[ -n "$DESC" ] && BODY="$BODY — $DESC"
+wrap "$BODY" "  "
 
-# Description, wrapped with indent
-if [ -n "$DESC" ]; then
-    wrap "  $DESC" "  "
-fi
-
-# URL (strip tracking params)
+# URL on its own line (strip tracking params)
 if [ -n "$LINK" ]; then
     LINK="${LINK%%\?*}"
     echo "  $LINK"
