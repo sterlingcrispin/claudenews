@@ -53,6 +53,18 @@ Headlines are fetched via RSS using `curl` + Python's built-in XML parser. No AP
 - `python3` (standard library only, no pip packages)
 - Claude Code
 
+## Customizing Sources
+
+The feed list lives in `~/.claude/news/fetch_headlines.sh` — it's just a bash array called `FEEDS`. You can edit it directly, or ask Claude to do it:
+
+> "Open ~/.claude/news/fetch_headlines.sh and remove Fox News and Bloomberg from the FEEDS list"
+
+> "Add the NASA RSS feed to ~/.claude/news/fetch_headlines.sh"
+
+Any RSS feed works. The format is `"Name|https://example.com/feed.xml"`.
+
+After editing, run `rm ~/.claude/news_cache/queue.tsv` to reset the headline queue.
+
 ## Uninstall
 
 ```bash
