@@ -26,6 +26,7 @@ wrap() {
     local width="$COLS"
     local line=""
 
+    set -f  # disable glob expansion so *, ?, [...] in headlines are literal
     for word in $text; do
         if [ -z "$line" ]; then
             line="$word"
@@ -37,6 +38,7 @@ wrap() {
         fi
     done
     [ -n "$line" ] && echo "$line"
+    set +f
 }
 
 # Combine title + description into one flowing block

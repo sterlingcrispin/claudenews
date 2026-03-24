@@ -60,7 +60,7 @@ def main():
         link = ""
         if link_el is not None:
             link = link_el.text or link_el.get("href", "")
-            link = link.strip()
+            link = re.sub(r"[\t\n\r]", "", link.strip())
 
         if title:
             print(f"{name}\t{title}\t{desc}\t{link}")

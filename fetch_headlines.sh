@@ -10,13 +10,12 @@ FETCH_TIMEOUT=8
 
 mkdir -p "$CACHE_DIR"
 
-# Skip if another fetch is already running
-if [ -f "$LOCK_FILE" ]; then
-    find "$CACHE_DIR" -name "fetch.lock" -mmin +1 -delete 2>/dev/null
-    [ -f "$LOCK_FILE" ] && exit 0
+# Skip if another fetch is already running (mkdir is atomic — no TOCTOU race)
+find "$CACHE_DIR" -name "fetch.lock" -type d -mmin +1 -exec rm -rf {} + 2>/dev/null
+if ! mkdir "$LOCK_FILE" 2>/dev/null; then
+    exit 0
 fi
-touch "$LOCK_FILE"
-trap 'rm -f "$LOCK_FILE"' EXIT
+trap 'rm -rf "$LOCK_FILE"' EXIT
 
 # RSS feeds: name|url
 FEEDS=(
