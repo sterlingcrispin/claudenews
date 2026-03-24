@@ -89,9 +89,29 @@ fi
 
 rm -f "$TEMP_FILE"
 
-# Pick a random headline and write to "current" file for stable display
-if [ -s "$HEADLINES_FILE" ]; then
-    TOTAL=$(wc -l < "$HEADLINES_FILE" | tr -d ' ')
-    LINE=$((RANDOM % TOTAL + 1))
-    sed -n "${LINE}p" "$HEADLINES_FILE" > "$CACHE_DIR/current.tsv"
+# Rotate headlines: promote next → current, pop a fresh one → next
+CURRENT="$CACHE_DIR/current.tsv"
+NEXT="$CACHE_DIR/next.tsv"
+QUEUE="$CACHE_DIR/queue.tsv"
+
+# Promote: what was queued up becomes the displayed headline
+[ -f "$NEXT" ] && mv "$NEXT" "$CURRENT"
+
+# Build/refill the queue if empty or missing
+if [ ! -s "$QUEUE" ] && [ -s "$HEADLINES_FILE" ]; then
+    # Deduplicate by title (field 2), shuffle so we cycle through all before repeating
+    sort -t$'\t' -k2,2 -u "$HEADLINES_FILE" | sort -R > "$QUEUE" 2>/dev/null \
+        || sort -t$'\t' -k2,2 -u "$HEADLINES_FILE" > "$QUEUE"
+fi
+
+# Pop the top line from the queue into next
+if [ -s "$QUEUE" ]; then
+    head -1 "$QUEUE" > "$NEXT"
+    sed -i '' '1d' "$QUEUE"
+fi
+
+# If no current yet (first run), pop one immediately
+if [ ! -s "$CURRENT" ] && [ -s "$QUEUE" ]; then
+    head -1 "$QUEUE" > "$CURRENT"
+    sed -i '' '1d' "$QUEUE"
 fi
