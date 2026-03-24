@@ -11,7 +11,7 @@ def clean(text):
     if not text:
         return ""
     text = re.sub(r"<!\[CDATA\[|\]\]>", "", text)
-    text = re.sub(r"<[^>]+>", "", text)
+    text = re.sub(r"<[^>]+>", " ", text)
     text = html.unescape(text)
     return " ".join(text.split()).strip()
 

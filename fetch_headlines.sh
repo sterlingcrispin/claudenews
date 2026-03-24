@@ -12,7 +12,7 @@ mkdir -p "$CACHE_DIR"
 
 # Skip if another fetch is already running
 if [ -f "$LOCK_FILE" ]; then
-    find "$CACHE_DIR" -name "fetch.lock" -mmin +0.5 -delete 2>/dev/null
+    find "$CACHE_DIR" -name "fetch.lock" -mmin +1 -delete 2>/dev/null
     [ -f "$LOCK_FILE" ] && exit 0
 fi
 touch "$LOCK_FILE"
@@ -79,12 +79,16 @@ else
     fetch_rss "$NAME" "$URL" > "$TEMP_FILE" 2>/dev/null
 fi
 
-# Only update cache if we got results
+# Only update cache if we got results — new headlines go at the end so
+# tail -200 keeps the freshest items when the cache is full
 if [ -s "$TEMP_FILE" ]; then
     if [ -f "$HEADLINES_FILE" ]; then
-        cat "$HEADLINES_FILE" >> "$TEMP_FILE"
+        { cat "$HEADLINES_FILE"; cat "$TEMP_FILE"; } > "$CACHE_DIR/merged.tsv"
+        tail -200 "$CACHE_DIR/merged.tsv" > "$HEADLINES_FILE"
+        rm -f "$CACHE_DIR/merged.tsv"
+    else
+        tail -200 "$TEMP_FILE" > "$HEADLINES_FILE"
     fi
-    tail -200 "$TEMP_FILE" > "$HEADLINES_FILE"
 fi
 
 rm -f "$TEMP_FILE"
@@ -112,14 +116,20 @@ if [ ! -s "$QUEUE" ] && [ -s "$HEADLINES_FILE" ]; then
         || sort -t$'\t' -k2,2 -u "$HEADLINES_FILE" | atomic_write "$QUEUE"
 fi
 
-# Pop the top line from the queue into next (atomic)
+# Pop first line from queue into a target file, remove it from queue (portable)
+pop_queue() {
+    local target="$1"
+    head -1 "$QUEUE" | atomic_write "$target"
+    tail -n +2 "$QUEUE" > "$QUEUE.pop.$$"
+    mv "$QUEUE.pop.$$" "$QUEUE"
+}
+
+# Pop the top line from the queue into next
 if [ -s "$QUEUE" ]; then
-    head -1 "$QUEUE" | atomic_write "$NEXT"
-    sed -i '' '1d' "$QUEUE"
+    pop_queue "$NEXT"
 fi
 
 # If no current yet (first run), pop one immediately
 if [ ! -s "$CURRENT" ] && [ -s "$QUEUE" ]; then
-    head -1 "$QUEUE" | atomic_write "$CURRENT"
-    sed -i '' '1d' "$QUEUE"
+    pop_queue "$CURRENT"
 fi
