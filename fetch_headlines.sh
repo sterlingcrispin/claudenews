@@ -88,3 +88,10 @@ if [ -s "$TEMP_FILE" ]; then
 fi
 
 rm -f "$TEMP_FILE"
+
+# Pick a random headline and write to "current" file for stable display
+if [ -s "$HEADLINES_FILE" ]; then
+    TOTAL=$(wc -l < "$HEADLINES_FILE" | tr -d ' ')
+    LINE=$((RANDOM % TOTAL + 1))
+    sed -n "${LINE}p" "$HEADLINES_FILE" > "$CACHE_DIR/current.tsv"
+fi

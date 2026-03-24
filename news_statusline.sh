@@ -1,17 +1,14 @@
 #!/bin/bash
-# news_statusline.sh — Outputs a random headline for the Claude Code status line.
+# news_statusline.sh — Displays the current headline for the Claude Code status line.
 
-HEADLINES_FILE="$HOME/.claude/news_cache/headlines.tsv"
+CURRENT_FILE="$HOME/.claude/news_cache/current.tsv"
 
-if [ ! -f "$HEADLINES_FILE" ] || [ ! -s "$HEADLINES_FILE" ]; then
+if [ ! -f "$CURRENT_FILE" ] || [ ! -s "$CURRENT_FILE" ]; then
     echo "No headlines cached yet"
     exit 0
 fi
 
-# Count lines and pick a random one
-TOTAL=$(wc -l < "$HEADLINES_FILE" | tr -d ' ')
-LINE=$((RANDOM % TOTAL + 1))
-ENTRY=$(sed -n "${LINE}p" "$HEADLINES_FILE")
+ENTRY=$(cat "$CURRENT_FILE")
 
 # Parse TSV: source \t title \t description \t link
 SOURCE=$(echo "$ENTRY" | cut -f1)
@@ -28,7 +25,6 @@ wrap() {
     local prefix="$2"
     local width="$COLS"
     local line=""
-    local first=true
 
     for word in $text; do
         if [ -z "$line" ]; then
@@ -38,8 +34,6 @@ wrap() {
         else
             echo "$line"
             line="${prefix}${word}"
-            width="$COLS"
-            first=false
         fi
     done
     [ -n "$line" ] && echo "$line"
