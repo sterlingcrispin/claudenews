@@ -19,12 +19,21 @@ TITLE=$(echo "$ENTRY" | cut -f2)
 DESC=$(echo "$ENTRY" | cut -f3)
 LINK=$(echo "$ENTRY" | cut -f4)
 
+# Get terminal width, default 80
+COLS=$(tput cols 2>/dev/null || echo 80)
+
 # Line 1: Source: Title
-# Line 2: Description... [link]
-echo "$SOURCE: $TITLE"
-if [ -n "$DESC" ] || [ -n "$LINK" ]; then
-    LINE2=""
-    [ -n "$DESC" ] && LINE2="$DESC"
-    [ -n "$LINK" ] && LINE2="$LINE2 [$LINK]"
-    echo "  $LINE2"
+L1="$SOURCE: $TITLE"
+if [ ${#L1} -gt "$COLS" ]; then
+    L1="${L1:0:$((COLS - 3))}..."
+fi
+echo "$L1"
+
+# Line 2: Description (no URL — not clickable in status bar)
+if [ -n "$DESC" ]; then
+    L2="  $DESC"
+    if [ ${#L2} -gt "$COLS" ]; then
+        L2="${L2:0:$((COLS - 3))}..."
+    fi
+    echo "$L2"
 fi
