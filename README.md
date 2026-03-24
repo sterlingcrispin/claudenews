@@ -12,6 +12,8 @@ curl -fsSL https://raw.githubusercontent.com/sterlingcrispin/claudenews/main/ins
 
 Then restart Claude Code.
 
+![Claude Code News Headlines screenshot](cladenews.png)
+
 ## What it does
 
 - **On every message you send**: A background hook fetches headlines from a random news source and queues the next headline
